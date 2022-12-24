@@ -1,58 +1,55 @@
-//npm install websocket
-var WebSocketServer = require('websocket').server;
-var http = require('http');
+const path = require('path');
+const express = require('express');
+const WebSocket = require('ws');
 
-var server = http.createServer(function(request, response) {
-    console.log((new Date()) + ' Received request for ' + request.url);
-    response.writeHead(404);
-    response.end();
+const app = express();
+
+app.use('/static', express.static(path.join(__dirname, 'public')));
+
+let connectedClients = [];
+const HTTP_PORT = 8000;
+
+let connections = {
+	gas1: { port: 8887, display: 'Cabin gas', class: 'gas-sensor', view: 'overlay' },
+	gas2: { port: 8886, display: 'Electric gas', class: 'gas-sensor', view: 'overlay' },
+};
+
+// Clients
+const wss = new WebSocket.Server({port: '8999'}, () => console.log(`WS Server is listening at 8999`));
+
+wss.on('connection', ws => {
+	ws.on('message', data => {
+		if (ws.readyState !== ws.OPEN) return;
+		connectedClients.push(ws);
+	});
 });
-server.listen(process.env.PORT || 9000, function() {
-    console.log((new Date()) + ' Server is listening on port 9000');
+
+
+// Sensors
+Object.entries(connections).forEach(([key, settings]) => {
+	const connection = connections[key];
+	connection.sensors = {};
+	
+	new WebSocket.Server({port: settings.port}, () => console.log(`WS Server is listening at ${settings.port}`)).on('connection',(ws) => {
+		ws.on('message', data => {
+			if (ws.readyState !== ws.OPEN) return;
+			if (typeof data === 'object') {
+				// For a future video, taking care of video stream from ESP32 Cam
+			} else {
+				connection.sensors = data.split(",").reduce((acc, item) => {
+					const key = item.split("=")[0];
+					const value = item.split("=")[1];
+					acc[key] = value;
+					return acc;
+				}, {});
+			}
+
+			connectedClients.forEach(client => {
+				client.send(JSON.stringify({ devices: connections }));
+			});		  
+		});
+	});
 });
 
-wsServer = new WebSocketServer({
-    httpServer: server,
-    // You should not use autoAcceptConnections for production
-    // applications, as it defeats all standard cross-origin protection
-    // facilities built into the protocol and the browser.  You should
-    // *always* verify the connection's origin and decide whether or not
-    // to accept it.
-    autoAcceptConnections: false
-});
-
-function originIsAllowed(origin) {
-  // put logic here to detect whether the specified origin is allowed.
-  return true;
-}
-
-wsServer.on('request', function(request) {
-    console.log(request)
-    if (!originIsAllowed(request.origin)) {
-      // Make sure we only accept requests from an allowed origin
-      request.reject();
-      console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
-      return;
-    }
-    
-    var connection = request.accept(null, request.origin)
-    console.log((new Date()) + ' Connection accepted.');
-
-    connection.on('message', function(message) {
-        if (message.type === 'utf8') {
-            console.log('Received Message: ' + message.utf8Data);
-            //connection.sendUTF(message.utf8Data); this resend the reseived message, instead of it i will send a custom message. hello from nodejs
-            connection.sendUTF("Hello from node.js");
-        }
-        else if (message.type === 'binary') {
-            console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-            connection.sendBytes(message.binaryData);
-        }
-    });
-
-
-
-    connection.on('close', function(reasonCode, description) {
-        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
-    });
-});
+app.get('/client',(_req,res)=>{ res.sendFile(path.resolve(__dirname,'./public/client.html')); });
+app.listen(HTTP_PORT,()=>{ console.log(`HTTP server starting on ${HTTP_PORT}`); });
