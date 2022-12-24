@@ -7,7 +7,7 @@ var server = http.createServer(function(request, response) {
     response.writeHead(404);
     response.end();
 });
-server.listen(9000, function() {
+server.listen(process.env.PORT || 9000, function() {
     console.log((new Date()) + ' Server is listening on port 9000');
 });
 
