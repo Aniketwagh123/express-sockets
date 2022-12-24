@@ -1,4 +1,4 @@
-//npm install websocket
+    //npm install websocket
 var WebSocketServer = require('websocket').server;
 var http = require('http');
 
@@ -7,8 +7,9 @@ var server = http.createServer(function(request, response) {
     response.writeHead(404);
     response.end();
 });
-server.listen(9000, function() {
-    console.log((new Date()) + ' Server is listening on port 9000');
+var PORT = process.env.PORT || 9000
+server.listen(PORT, function() {
+    console.log((new Date()) + ` Server is listening on port 9000 ${PORT}`);
 });
 
 wsServer = new WebSocketServer({
