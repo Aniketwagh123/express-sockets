@@ -14,8 +14,12 @@
 <div style="overflow:scroll; width: 800px; height: 550px; border: solid; border-radius: 9px" id="display"></div>
 
   <script>
+  require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+  console.log('addr: '+add);
+  var sock =new WebSocket(`ws://${add}:10000`);
+  })
   //var sock =new WebSocket("ws://localhost:5001");
-  var sock =new WebSocket("https://wensockets-client.onrender.com/");  //replace this address with the one the node.js server prints out. keep port 3000
+    //replace this address with the one the node.js server prints out. keep port 3000
   var display=document.getElementById("display")
   
   sock.onopen=function(event){
